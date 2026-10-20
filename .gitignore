@@ -1,0 +1,18 @@
+# ---------- Secrets (NEVER upload these) ----------
+.env
+*.env
+.env.*
+application-local.properties
+
+# ---------- Frontend (React / Node) ----------
+node_modules/
+dist/
+
+# ---------- Backend (Java / Maven) ----------
+target/
+
+# ---------- Editor and OS files ----------
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
