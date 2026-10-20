@@ -1,0 +1,50 @@
+/* Center the whole app and limit its width so it looks neat on big screens */
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+/* Title area at the top */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2.2rem;
+  color: #1f6f4a;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #555;
+}
+
+/* Stack the cards vertically with space between them */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* A white box with a soft border and shadow */
+.card {
+  background: #ffffff;
+  border: 1px solid #e2e2e2;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+/* Grey italic text for "coming soon" sections */
+.placeholder {
+  color: #888;
+  font-style: italic;
+}
