@@ -48,3 +48,27 @@
   color: #888;
   font-style: italic;
 }
+/* Small rounded badge that shows backend connection status */
+.status {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.status-checking {
+  background: #eef1f4;
+  color: #555;
+}
+
+.status-online {
+  background: #e3f6ea;
+  color: #1f6f4a;
+}
+
+.status-offline {
+  background: #fde8e8;
+  color: #b42318;
+}

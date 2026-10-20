@@ -1,14 +1,33 @@
+import { useEffect, useState } from 'react';
+import { checkHealth } from './api';
 import './App.css';
 
-// App is the main component of our website.
-// For now it only shows a title and placeholder sections.
-// In later steps we will add file upload, instructions, and preview.
 function App() {
+  // "useState" creates a variable React watches.
+  // When it changes, React automatically redraws the page.
+  // Possible values: "checking", "online", "offline"
+  const [backendStatus, setBackendStatus] = useState('checking');
+
+  // "useEffect" with an empty list [] runs ONCE when the page first loads.
+  // We use it to check if the backend is alive.
+  useEffect(() => {
+    checkHealth()
+      .then(() => setBackendStatus('online'))
+      .catch(() => setBackendStatus('offline'));
+  }, []);
+
   return (
     <div className="app">
       <header className="header">
         <h1>SmartSheet AI</h1>
         <p className="subtitle">CSV Data Cleaning Agent</p>
+
+        {/* Show a different badge depending on backendStatus */}
+        <p className={`status status-${backendStatus}`}>
+          {backendStatus === 'checking' && 'Checking backend...'}
+          {backendStatus === 'online' && 'Backend connected ✅'}
+          {backendStatus === 'offline' && 'Backend offline ❌ (is Spring Boot running?)'}
+        </p>
       </header>
 
       <main className="content">
@@ -31,5 +50,4 @@ function App() {
   );
 }
 
-// "export default" lets main.jsx import and display this component.
 export default App;
