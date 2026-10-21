@@ -31,6 +31,8 @@ const OPERATIONS = [
 
 // Example instructions the user can click to fill the text box
 const EXAMPLES = ['Remove duplicate rows', 'Trim extra spaces', 'Clean up this file'];
+// Same limit as the backend (application.properties)
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
 
 function App() {
   const [backendStatus, setBackendStatus] = useState('checking');
@@ -60,12 +62,27 @@ function App() {
   }
 
   function handleFileChange(event) {
-    setSelectedFile(event.target.files[0] || null);
+    const file = event.target.files[0] || null;
     setUploadResult(null);
     setUploadError('');
     resetCleaning();
-  }
 
+    // Quick checks in the browser (the backend checks again; never trust only the browser)
+    if (file && !file.name.toLowerCase().endsWith('.csv')) {
+      setSelectedFile(null);
+      setUploadError('Only .csv files are allowed.');
+      return;
+    }
+    if (file && file.size > MAX_FILE_SIZE) {
+      setSelectedFile(null);
+      setUploadError(
+        `This file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The maximum size is 5 MB.`
+      );
+      return;
+    }
+
+    setSelectedFile(file);
+  }
   async function handleUpload() {
     if (!selectedFile) {
       setUploadError('Please choose a CSV file first.');

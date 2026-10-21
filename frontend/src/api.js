@@ -1,28 +1,40 @@
 // Backend address: empty in development (Vite proxy), real URL after deployment.
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-// GET /api/health -> { status, message }
-export async function checkHealth() {
-  const response = await fetch(`${API_BASE}/api/health`);
-  if (!response.ok) {
-    throw new Error(`Server error: ${response.status}`);
+const SERVER_DOWN =
+  'The server is not responding. Is the backend running? Please try again in a moment.';
+
+// One shared function for EVERY call to the backend.
+// It turns every kind of failure into a simple, readable error message.
+async function request(path, options) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, options);
+  } catch {
+    // fetch only throws when there is no answer at all (server off, no internet)
+    throw new Error(SERVER_DOWN);
   }
-  return response.json();
-}
 
-// Shared helper: sends FormData with POST and handles errors the same way every time.
-async function postForm(path, formData) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    body: formData,
-  });
-
+  // Read the JSON reply. If it isn't JSON (e.g. a proxy error page), use {}.
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error || `Request failed (status ${response.status})`);
+    // Prefer our backend's friendly message. With no message and a 5xx status,
+    // the backend is probably down (the Vite proxy answers 500 when it can't reach it).
+    if (data.error) throw new Error(data.error);
+    if (response.status >= 500) throw new Error(SERVER_DOWN);
+    throw new Error(`Request failed (status ${response.status})`);
   }
   return data;
+}
+
+function postForm(path, formData) {
+  return request(path, { method: 'POST', body: formData });
+}
+
+// GET /api/health -> { status, message }
+export function checkHealth() {
+  return request('/api/health');
 }
 
 // POST /api/csv/upload -> { data: { headers, rows }, profile }
@@ -41,7 +53,6 @@ export function cleanCsv(file, operations) {
 }
 
 // POST /api/csv/ai-clean -> AI mode
-// Returns { data, appliedOperations, before, after, aiReason, aiInput }
 export function aiCleanCsv(file, instruction) {
   const formData = new FormData();
   formData.append('file', file);
