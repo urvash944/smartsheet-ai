@@ -339,3 +339,8 @@
 .data-table tr.row-broken td {
   background: #fff8e1;
 }
+/* Yellow badge while the free server wakes up */
+.status-waking {
+  background: #fff8e1;
+  color: #6b4e00;
+}

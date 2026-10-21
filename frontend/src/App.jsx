@@ -50,10 +50,33 @@ function App() {
   const [cleaning, setCleaning] = useState(false);
   const [cleanError, setCleanError] = useState('');
 
+    // Check the backend when the page loads.
+  // Free hosting puts the server to sleep when idle, and waking up takes about a minute,
+  // so we retry every 5 seconds (up to 2 minutes) instead of giving up after one try.
   useEffect(() => {
-    checkHealth()
-      .then(() => setBackendStatus('online'))
-      .catch(() => setBackendStatus('offline'));
+    let cancelled = false; // becomes true if the page is closed while we are waiting
+
+    async function connect() {
+      for (let attempt = 1; attempt <= 24; attempt++) { // 24 x 5 seconds = 2 minutes
+        try {
+          await checkHealth();
+          if (!cancelled) setBackendStatus('online');
+          return; // success, stop retrying
+        } catch {
+          if (cancelled) return;
+          setBackendStatus('waking');
+          await new Promise((resolve) => setTimeout(resolve, 5000)); // wait 5 seconds
+        }
+      }
+      if (!cancelled) setBackendStatus('offline');
+    }
+
+    connect();
+
+    // React runs this "cleanup" function when the component is removed
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function resetCleaning() {
@@ -153,10 +176,11 @@ function App() {
       <header className="header">
         <h1>SmartSheet AI</h1>
         <p className="subtitle">CSV Data Cleaning Agent</p>
-        <p className={`status status-${backendStatus}`}>
+                <p className={`status status-${backendStatus}`}>
           {backendStatus === 'checking' && 'Checking backend...'}
+          {backendStatus === 'waking' && '⏳ Waking up the server (free hosting sleeps when idle, ~1 minute)...'}
           {backendStatus === 'online' && 'Backend connected ✅'}
-          {backendStatus === 'offline' && 'Backend offline ❌ (is Spring Boot running?)'}
+          {backendStatus === 'offline' && 'Backend offline ❌ Please refresh the page in a minute.'}
         </p>
       </header>
 
