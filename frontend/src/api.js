@@ -1,19 +1,42 @@
-// The base address of our backend.
-// - During development this is empty (""), so calls go to "/api/..."
-//   and the Vite proxy forwards them to localhost:8080.
-// - After deployment (Step 10) we will set VITE_API_URL to the real backend address.
+// Backend address: empty in development (Vite proxy), real URL after deployment.
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-// Asks the backend "are you alive?"
-// Returns the JSON object, e.g. { status: "UP", message: "..." }
+// GET /api/health -> { status, message }
 export async function checkHealth() {
   const response = await fetch(`${API_BASE}/api/health`);
-
-  // If the server replied with an error code (like 404 or 500), stop here
   if (!response.ok) {
     throw new Error(`Server error: ${response.status}`);
   }
-
-  // Convert the response text into a JavaScript object
   return response.json();
+}
+
+// Shared helper: sends FormData with POST and handles errors the same way every time.
+async function postForm(path, formData) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed (status ${response.status})`);
+  }
+  return data;
+}
+
+// POST /api/csv/upload -> { data: { headers, rows }, profile }
+export function uploadCsv(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return postForm('/api/csv/upload', formData);
+}
+
+// POST /api/csv/clean -> { data, appliedOperations, before, after }
+export function cleanCsv(file, operations) {
+  const formData = new FormData();
+  formData.append('file', file);
+  // Add "operations" once per selected operation; Spring collects them into a List
+  operations.forEach((operation) => formData.append('operations', operation));
+  return postForm('/api/csv/clean', formData);
 }
