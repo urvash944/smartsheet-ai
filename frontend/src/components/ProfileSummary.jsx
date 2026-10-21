@@ -8,12 +8,12 @@ const CHECKS = [
   { label: 'Data rows', get: (p) => p.totalRows },
   { label: 'Columns', get: (p) => p.totalColumns },
   { label: 'Duplicate rows', get: (p) => p.duplicateRows },
+  { label: 'Duplicate rows (ignoring spaces)', get: (p) => p.duplicateRowsIgnoringSpaces },
   { label: 'Empty rows', get: (p) => p.emptyRows },
   { label: 'Rows with wrong column count', get: (p) => p.rowsWithWrongColumnCount },
   { label: 'Empty cells', get: (p) => totalOf(p, 'emptyCells') },
   { label: 'Cells with extra spaces', get: (p) => totalOf(p, 'cellsWithExtraSpaces') },
 ];
-
 // Shows a data health table.
 // - Only "before" given  -> one column of counts
 // - "before" and "after" -> side-by-side comparison, changed values highlighted

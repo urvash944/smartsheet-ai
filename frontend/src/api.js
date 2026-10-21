@@ -32,11 +32,19 @@ export function uploadCsv(file) {
   return postForm('/api/csv/upload', formData);
 }
 
-// POST /api/csv/clean -> { data, appliedOperations, before, after }
+// POST /api/csv/clean -> manual mode
 export function cleanCsv(file, operations) {
   const formData = new FormData();
   formData.append('file', file);
-  // Add "operations" once per selected operation; Spring collects them into a List
   operations.forEach((operation) => formData.append('operations', operation));
   return postForm('/api/csv/clean', formData);
+}
+
+// POST /api/csv/ai-clean -> AI mode
+// Returns { data, appliedOperations, before, after, aiReason, aiInput }
+export function aiCleanCsv(file, instruction) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('instruction', instruction);
+  return postForm('/api/csv/ai-clean', formData);
 }

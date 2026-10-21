@@ -212,3 +212,130 @@
   color: #1f6f4a;
   font-weight: 700;
 }
+/* ---------- AI instruction ---------- */
+.instruction {
+  width: 100%;
+  padding: 10px 12px;
+  font: inherit;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.instruction:focus {
+  outline: 2px solid #1f6f4a;
+  border-color: transparent;
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.chip {
+  background: #eef5f1;
+  border: 1px solid #cfe3d8;
+  color: #1f6f4a;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: #dcefe4;
+}
+
+.privacy-note {
+  font-size: 0.85rem;
+  color: #555;
+  background: #f6f8fa;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* ---------- Manual mode ---------- */
+.manual-mode {
+  margin-top: 20px;
+  border-top: 1px dashed #ddd;
+  padding-top: 12px;
+}
+
+.manual-mode summary,
+.ai-input summary {
+  cursor: pointer;
+  color: #1f6f4a;
+  font-weight: 600;
+}
+
+.button-secondary {
+  background: #4b5563;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #374151;
+}
+
+/* ---------- AI results ---------- */
+.ai-reason {
+  background: #eef5f1;
+  border-left: 4px solid #1f6f4a;
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+
+.ai-input {
+  margin: 12px 0;
+}
+
+.ai-input pre {
+  background: #1e1e1e;
+  color: #e6e6e6;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+/* Yellow warning box */
+.warning {
+  background: #fff8e1;
+  border-left: 4px solid #f5a623;
+  color: #6b4e00;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-top: 12px;
+}
+/* ---------- Download bar ---------- */
+.download-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f0f5f2;
+  border: 1px solid #cfe3d8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 16px 0;
+}
+
+.download-bar small {
+  color: #555;
+}
+
+/* ---------- Table: row numbers and broken rows ---------- */
+.data-table .row-number {
+  color: #888;
+  width: 1%;
+  text-align: right;
+}
+
+.data-table tr.row-broken td {
+  background: #fff8e1;
+}

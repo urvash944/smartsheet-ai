@@ -1,8 +1,7 @@
 // Only show the first 20 rows, so huge files don't freeze the browser.
 const PREVIEW_LIMIT = 20;
 
-// A reusable table. It receives "headers" and "rows" as props
-// (props = inputs passed into a component, like function arguments).
+// A reusable table. "headers" = column names, "rows" = list of rows.
 function DataTable({ headers, rows }) {
   const visibleRows = rows.slice(0, PREVIEW_LIMIT);
 
@@ -11,7 +10,7 @@ function DataTable({ headers, rows }) {
       <table className="data-table">
         <thead>
           <tr>
-            {/* One <th> header cell for each column name */}
+            <th className="row-number">#</th>
             {headers.map((header, index) => (
               <th key={index}>{header}</th>
             ))}
@@ -19,21 +18,36 @@ function DataTable({ headers, rows }) {
         </thead>
 
         <tbody>
-          {visibleRows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
-              {/* Loop over headers (not row) so every row has the same number of cells.
-                  If a row is shorter, "?? ''" shows an empty cell instead of crashing. */}
-              {headers.map((_, colIndex) => (
-                <td key={colIndex}>{row[colIndex] ?? ''}</td>
-              ))}
-            </tr>
-          ))}
+          {visibleRows.map((row, rowIndex) => {
+            // A "broken" row has more or fewer cells than there are columns
+            const isBroken = row.length !== headers.length;
+            const problem =
+              row.length < headers.length
+                ? `This row has ${headers.length - row.length} missing cell(s)`
+                : `This row has ${row.length - headers.length} extra cell(s) that are not shown`;
+
+            return (
+              <tr
+                key={rowIndex}
+                className={isBroken ? 'row-broken' : ''}
+                title={isBroken ? problem : undefined} // message shown on mouse hover
+              >
+                <td className="row-number">
+                  {rowIndex + 1}
+                  {isBroken && ' ⚠️'}
+                </td>
+                {headers.map((_, colIndex) => (
+                  <td key={colIndex}>{row[colIndex] ?? ''}</td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
       {rows.length > PREVIEW_LIMIT && (
         <p className="table-note">
-          Showing the first {PREVIEW_LIMIT} of {rows.length} rows.
+          Showing the first {PREVIEW_LIMIT} of {rows.length} rows. The download contains all rows.
         </p>
       )}
     </div>
