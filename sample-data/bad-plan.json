@@ -1,0 +1,6 @@
+{
+  "steps": [
+    { "action": "CHANGE_CASE", "column": "city", "option": "UPPER" },
+    { "action": "RENAME_COLUMN", "column": "cty", "newText": "town" }
+  ]
+}

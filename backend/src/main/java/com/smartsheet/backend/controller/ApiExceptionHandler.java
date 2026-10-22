@@ -5,6 +5,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,10 +29,25 @@ public class ApiExceptionHandler {
         return error(413, "This file is too large. The maximum size is 5 MB.");
     }
 
-    // The request was sent without a "file" part
+    // The request was sent without a required part ("file" or "plan")
     @ExceptionHandler(MissingServletRequestPartException.class)
-    public ResponseEntity<Map<String, String>> missingFile(MissingServletRequestPartException e) {
+    public ResponseEntity<Map<String, String>> missingPart(MissingServletRequestPartException e) {
+        if ("plan".equals(e.getRequestPartName())) {
+            return error(400, "Please send a cleaning plan.");
+        }
         return error(400, "Please choose a CSV file to upload.");
+    }
+
+    // NEW (Step C1): the plan JSON is broken, e.g. a missing bracket or wrong field type
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> badJson(HttpMessageNotReadableException e) {
+        return error(400, "The cleaning plan is not valid JSON.");
+    }
+
+    // NEW (Step C1): the plan part was sent without "Content-Type: application/json"
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> wrongType(HttpMediaTypeNotSupportedException e) {
+        return error(415, "The cleaning plan must be sent as JSON (application/json).");
     }
 
     // The upload itself was broken (for example, cut off halfway)

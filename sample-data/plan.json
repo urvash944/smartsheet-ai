@@ -1,0 +1,11 @@
+{
+  "steps": [
+    { "action": "TRIM_WHITESPACE" },
+    { "action": "CHANGE_CASE", "column": "name", "option": "TITLE" },
+    { "action": "CHANGE_CASE", "column": "city", "option": "UPPER" },
+    { "action": "FORMAT_DATE", "column": "joined", "text": "DD/MM/YYYY", "option": "YYYY-MM-DD" },
+    { "action": "REMOVE_DUPLICATES", "columns": ["name", "email"], "option": "IGNORE_CASE" },
+    { "action": "DELETE_ROWS_IF", "column": "email", "option": "IS_EMPTY" },
+    { "action": "SPLIT_COLUMN", "column": "name", "text": " ", "newText": "first_name,last_name" }
+  ]
+}
