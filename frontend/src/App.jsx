@@ -1,21 +1,13 @@
 import { useEffect, useState } from 'react';
-import { checkHealth, uploadCsv, cleanCsv, aiPlan, applyPlan } from './api';
+import { checkHealth, uploadCsv, aiPlan, applyPlan } from './api';
 import { downloadCsv, cleanedFileName } from './csvExport';
+import { fromPlan, toPlan } from './planEditing';
 import DataTable from './components/DataTable';
 import ProfileSummary from './components/ProfileSummary';
-import PlanPreview from './components/PlanPreview';
+import PlanEditor from './components/PlanEditor';
 import './App.css';
 
-// Operations for manual mode (no AI). "id" values must match the Java enum names.
-const OPERATIONS = [
-  { id: 'TRIM_WHITESPACE', label: 'Trim extra spaces', hint: 'Removes spaces at the start and end of every cell' },
-  { id: 'REMOVE_EMPTY_ROWS', label: 'Remove empty rows', hint: 'Removes rows where every cell is blank' },
-  { id: 'FILL_EMPTY_CELLS', label: 'Fill empty cells', hint: 'Puts N/A into blank or missing cells' },
-  { id: 'REMOVE_DUPLICATES', label: 'Remove duplicate rows', hint: 'Keeps the first copy of each identical row' },
-];
-const OPERATION_LABELS = Object.fromEntries(OPERATIONS.map((op) => [op.id, op.label]));
-
-// Example instructions the user can click. They show what the new building blocks can do.
+// Example instructions the user can click. They show what the building blocks can do.
 const EXAMPLES = [
   'Clean up this file',
   'Make city names uppercase',
@@ -36,17 +28,16 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // AI plan state (NEW in Step C3)
+  // Plan editor state
   const [instruction, setInstruction] = useState('');
-  const [planResponse, setPlanResponse] = useState(null); // the AI's plan + preview, waiting for Confirm
-  const [planning, setPlanning] = useState(false);        // true while asking the AI or re-running a plan
+  const [planSteps, setPlanSteps] = useState(null);     // null = editor closed; [] = empty plan
+  const [planPreview, setPlanPreview] = useState(null); // last result from the backend
+  const [planStale, setPlanStale] = useState(false);    // true = steps changed after the last preview
+  const [aiInfo, setAiInfo] = useState(null);           // { reason, notDone, attempts, aiInput } or null
+  const [working, setWorking] = useState(false);        // true while waiting for the backend
 
-  // Manual mode state
-  const [selectedOps, setSelectedOps] = useState([]);
-
-  // Final result shown in Card 3 (from a confirmed plan OR manual mode)
+  // Final result shown in Card 3
   const [cleanResult, setCleanResult] = useState(null);
-  const [cleaning, setCleaning] = useState(false);
   const [cleanError, setCleanError] = useState('');
 
   // Check the backend when the page loads (retries while the free server wakes up)
@@ -74,9 +65,12 @@ function App() {
     };
   }, []);
 
-  // Clears the plan and the result (used when a new file is chosen, or a new request starts)
+  // Closes the editor and clears the result (new file, or a new plan starts)
   function resetCleaning() {
-    setPlanResponse(null);
+    setPlanSteps(null);
+    setPlanPreview(null);
+    setPlanStale(false);
+    setAiInfo(null);
     setCleanResult(null);
     setCleanError('');
   }
@@ -118,81 +112,70 @@ function App() {
     }
   }
 
-  // ---------- AI plan (NEW) ----------
+  // ---------- Making a plan ----------
 
-  // Step 1: ask the AI for a plan. Nothing is "accepted" yet: we only show a preview.
+  // The AI writes the plan; the backend checks it and sends a preview
   async function handleMakePlan() {
-    setPlanning(true);
+    setWorking(true);
     resetCleaning();
     try {
-      setPlanResponse(await aiPlan(selectedFile, instruction.trim()));
-    } catch (error) {
-      setCleanError(error.message);
-    } finally {
-      setPlanning(false);
-    }
-  }
-
-  // The user removes a step -> run the shorter plan again to get a fresh, correct preview
-  async function handleRemoveStep(index) {
-    const steps = planResponse.plan.steps.filter((_, i) => i !== index);
-    if (steps.length === 0) {
-      setPlanResponse(null); // nothing left to run
-      return;
-    }
-    const newPlan = { steps };
-    setPlanning(true);
-    setCleanError('');
-    try {
-      const preview = await applyPlan(selectedFile, newPlan);
-      // Keep the AI's reason and "what the AI saw", replace the plan and the preview
-      setPlanResponse({ ...planResponse, plan: newPlan, preview, edited: true });
-    } catch (error) {
-      setCleanError(error.message);
-    } finally {
-      setPlanning(false);
-    }
-  }
-
-  // Step 2: the user confirms -> the preview becomes the result in Card 3
-  function handleConfirmPlan() {
-    const { preview, reason, notDone, aiInput } = planResponse;
-    setCleanResult({
-      data: preview.data,
-      before: preview.before,
-      after: preview.after,
-      applied: preview.steps.map((report) => report.summary),
-      aiReason: reason,
-      notDone,
-      aiInput,
-    });
-    setPlanResponse(null);
-  }
-
-  // ---------- Manual mode ----------
-
-  function toggleOperation(id) {
-    setSelectedOps((current) =>
-      current.includes(id) ? current.filter((op) => op !== id) : [...current, id]
-    );
-  }
-
-  async function handleManualClean() {
-    setCleaning(true);
-    resetCleaning();
-    try {
-      const result = await cleanCsv(selectedFile, selectedOps);
-      setCleanResult({
-        data: result.data,
-        before: result.before,
-        after: result.after,
-        applied: result.appliedOperations.map((op) => OPERATION_LABELS[op] || op),
+      const response = await aiPlan(selectedFile, instruction.trim());
+      setPlanSteps(fromPlan(response.plan));
+      setPlanPreview(response.preview);
+      setPlanStale(false);
+      setAiInfo({
+        reason: response.reason,
+        notDone: response.notDone,
+        attempts: response.attempts,
+        aiInput: response.aiInput,
       });
     } catch (error) {
       setCleanError(error.message);
     } finally {
-      setCleaning(false);
+      setWorking(false);
     }
+  }
+
+  // Start with an empty plan and build it by hand (no AI)
+  function handleBuildYourself() {
+    resetCleaning();
+    setPlanSteps([]);
+    setPlanStale(true);
+  }
+
+  // Any edit (drag, add, remove, reorder, change a setting) makes the old preview out of date
+  function handleStepsChange(newSteps) {
+    setPlanSteps(newSteps);
+    setPlanStale(true);
+    setCleanError('');
+  }
+
+  // Java runs the edited plan and returns a fresh preview
+  async function handleUpdatePreview() {
+    setWorking(true);
+    setCleanError('');
+    try {
+      setPlanPreview(await applyPlan(selectedFile, toPlan(planSteps)));
+      setPlanStale(false);
+    } catch (error) {
+      setCleanError(error.message); // e.g. "Step 2: column 'cty' does not exist."
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  // The user accepts the previewed result
+  function handleConfirmPlan() {
+    setCleanResult({
+      data: planPreview.data,
+      before: planPreview.before,
+      after: planPreview.after,
+      applied: planPreview.steps.map((report) => report.summary),
+      aiReason: aiInfo ? aiInfo.reason : '',
+      notDone: aiInfo ? aiInfo.notDone : '',
+      aiInput: aiInfo ? aiInfo.aiInput : '',
+    });
+    setPlanSteps(null);
   }
 
   // ---------- Download ----------
@@ -210,8 +193,6 @@ function App() {
     if (columnChange > 0) parts.push(`${columnChange} column(s) added`);
     return parts.length > 0 ? parts.join(', ') : 'No rows or columns removed';
   }
-
-  const busy = planning || cleaning;
 
   return (
     <div className="app">
@@ -259,9 +240,9 @@ function App() {
           )}
         </section>
 
-        {/* ---------- CARD 2: Instruction + plan preview ---------- */}
+        {/* ---------- CARD 2: Plan ---------- */}
         <section className="card">
-          <h2>2. Tell the AI what to clean</h2>
+          <h2>2. Plan the cleaning</h2>
 
           {!uploadResult ? (
             <p className="placeholder">Upload a file first.</p>
@@ -271,7 +252,7 @@ function App() {
                 className="instruction"
                 rows={3}
                 maxLength={300}
-                placeholder='For example: "Make city names uppercase and remove rows where email is empty"'
+                placeholder='Tell the AI what to do, e.g. "Make city names uppercase and remove rows where email is empty"'
                 value={instruction}
                 onChange={(event) => setInstruction(event.target.value)}
               />
@@ -290,50 +271,31 @@ function App() {
                 your data. Please don&apos;t type personal information in the instruction.
               </p>
 
-              <button className="button" onClick={handleMakePlan} disabled={busy || !instruction.trim()}>
-                {planning && !planResponse ? 'The AI is planning...' : 'Make a plan with AI'}
-              </button>
-
-              {planResponse && (
-                <PlanPreview
-                  planResponse={planResponse}
-                  busy={busy}
-                  onRemoveStep={handleRemoveStep}
-                  onConfirm={handleConfirmPlan}
-                  onDiscard={() => setPlanResponse(null)}
-                />
-              )}
+              <div className="plan-actions">
+                <button className="button" onClick={handleMakePlan} disabled={working || !instruction.trim()}>
+                  {working && planSteps === null ? 'The AI is planning...' : '🤖 Make a plan with AI'}
+                </button>
+                <button className="button button-secondary" onClick={handleBuildYourself} disabled={working}>
+                  🧱 Build a plan yourself (no AI)
+                </button>
+              </div>
 
               {cleanError && <p className="error">{cleanError}</p>}
 
-              <details className="manual-mode">
-                <summary>Manual mode (no AI)</summary>
-
-                <div className="ops-list">
-                  {OPERATIONS.map((op) => (
-                    <label key={op.id} className="op-option">
-                      <input
-                        type="checkbox"
-                        checked={selectedOps.includes(op.id)}
-                        onChange={() => toggleOperation(op.id)}
-                      />
-                      <span>
-                        <strong>{op.label}</strong>
-                        <br />
-                        <small>{op.hint}</small>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                <button
-                  className="button button-secondary"
-                  onClick={handleManualClean}
-                  disabled={busy || selectedOps.length === 0}
-                >
-                  {cleaning ? 'Cleaning...' : 'Clean Data'}
-                </button>
-              </details>
+              {planSteps !== null && (
+                <PlanEditor
+                  steps={planSteps}
+                  onStepsChange={handleStepsChange}
+                  headers={uploadResult.data.headers}
+                  aiInfo={aiInfo}
+                  preview={planPreview}
+                  previewStale={planStale}
+                  busy={working}
+                  onUpdatePreview={handleUpdatePreview}
+                  onConfirm={handleConfirmPlan}
+                  onDiscard={() => setPlanSteps(null)}
+                />
+              )}
             </>
           )}
         </section>
@@ -343,7 +305,7 @@ function App() {
           <h2>3. Preview and download</h2>
 
           {!cleanResult ? (
-            <p className="placeholder">Confirm a plan (or use manual mode) to see the cleaned data here.</p>
+            <p className="placeholder">Confirm a plan to see the cleaned data here.</p>
           ) : (
             <>
               {cleanResult.aiReason && (
@@ -391,8 +353,8 @@ function App() {
 
               {cleanResult.after.duplicateRows > 0 && (
                 <p className="warning">
-                  ⚠️ {cleanResult.after.duplicateRows} duplicate row(s) remain. Try the instruction
-                  &quot;Remove duplicate rows&quot; to remove them.
+                  ⚠️ {cleanResult.after.duplicateRows} duplicate row(s) remain. Add a &quot;Remove
+                  duplicates&quot; step to remove them.
                 </p>
               )}
 

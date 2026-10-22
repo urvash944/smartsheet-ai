@@ -456,3 +456,140 @@
 .download-bar small {
   color: #555;
 }
+
+/* ================= Drag-and-drop plan editor (NEW in Step C4a) ================= */
+.plan-editor {
+  margin-top: 20px;
+  padding: 16px;
+  border: 2px solid #cfe3d8;
+  border-radius: 10px;
+  background: #fbfdfc;
+}
+
+/* Palette on the left, plan on the right. On narrow screens they stack. */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .editor-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.editor-layout h3 {
+  margin-top: 0;
+}
+
+.palette-group h4 {
+  margin: 12px 0 6px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #666;
+}
+
+.palette-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid #d7e6dd;
+  border-radius: 8px;
+  cursor: grab; /* shows a "hand" so people know it can be dragged */
+  font-size: 0.9rem;
+}
+
+.palette-block:hover {
+  border-color: #1f6f4a;
+  background: #f3faf6;
+}
+
+.palette-block:active {
+  cursor: grabbing;
+}
+
+.palette-label {
+  flex: 1;
+}
+
+.plan-step.editable {
+  border-top: 3px solid transparent; /* space for the drop line */
+}
+
+/* A green line above the step shows where a dragged item will land */
+.plan-step.drop-before {
+  border-top-color: #1f6f4a;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #999;
+  font-size: 1.2rem;
+  line-height: 26px;
+  user-select: none;
+  padding: 0 2px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.step-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
+.step-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.step-field input,
+.step-field select {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  min-width: 140px;
+  background: #fff;
+}
+
+.step-field input:focus,
+.step-field select:focus {
+  outline: 2px solid #1f6f4a;
+  border-color: transparent;
+}
+
+.step-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drop-zone {
+  border: 2px dashed #cfe3d8;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.drop-zone.active {
+  border-color: #1f6f4a;
+  background: #eef5f1;
+  color: #1f6f4a;
+}
