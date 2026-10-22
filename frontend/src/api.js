@@ -19,8 +19,6 @@ async function request(path, options) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    // Prefer our backend's friendly message. With no message and a 5xx status,
-    // the backend is probably down (the Vite proxy answers 500 when it can't reach it).
     if (data.error) throw new Error(data.error);
     if (response.status >= 500) throw new Error(SERVER_DOWN);
     throw new Error(`Request failed (status ${response.status})`);
@@ -44,7 +42,7 @@ export function uploadCsv(file) {
   return postForm('/api/csv/upload', formData);
 }
 
-// POST /api/csv/clean -> manual mode
+// POST /api/csv/clean -> manual mode (checkboxes)
 export function cleanCsv(file, operations) {
   const formData = new FormData();
   formData.append('file', file);
@@ -52,10 +50,24 @@ export function cleanCsv(file, operations) {
   return postForm('/api/csv/clean', formData);
 }
 
-// POST /api/csv/ai-clean -> AI mode
-export function aiCleanCsv(file, instruction) {
+// NEW (Step C3)
+// POST /api/plan/ai-plan -> { plan, notDone, reason, attempts, preview, aiInput }
+// Gemini writes a plan; the backend checks it and returns a preview of the result.
+export function aiPlan(file, instruction) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('instruction', instruction);
-  return postForm('/api/csv/ai-clean', formData);
+  return postForm('/api/plan/ai-plan', formData);
+}
+
+// NEW (Step C3)
+// POST /api/plan/apply -> { data, steps, before, after }
+// Runs a plan we give it (used after the user removes or edits steps).
+export function applyPlan(file, plan) {
+  const formData = new FormData();
+  formData.append('file', file);
+  // The plan must be sent as a JSON "part". A Blob lets us set its type to application/json,
+  // which is what @RequestPart("plan") in PlanController expects.
+  formData.append('plan', new Blob([JSON.stringify(plan)], { type: 'application/json' }));
+  return postForm('/api/plan/apply', formData);
 }

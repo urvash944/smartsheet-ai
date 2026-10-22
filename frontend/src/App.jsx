@@ -1,36 +1,29 @@
 import { useEffect, useState } from 'react';
-import { checkHealth, uploadCsv, cleanCsv, aiCleanCsv } from './api';
+import { checkHealth, uploadCsv, cleanCsv, aiPlan, applyPlan } from './api';
 import { downloadCsv, cleanedFileName } from './csvExport';
 import DataTable from './components/DataTable';
 import ProfileSummary from './components/ProfileSummary';
+import PlanPreview from './components/PlanPreview';
 import './App.css';
 
-// Operations for manual mode. "id" values must match the Java enum names.
+// Operations for manual mode (no AI). "id" values must match the Java enum names.
 const OPERATIONS = [
-  {
-    id: 'TRIM_WHITESPACE',
-    label: 'Trim extra spaces',
-    hint: 'Removes spaces at the start and end of every cell',
-  },
-  {
-    id: 'REMOVE_EMPTY_ROWS',
-    label: 'Remove empty rows',
-    hint: 'Removes rows where every cell is blank',
-  },
-  {
-    id: 'FILL_EMPTY_CELLS',
-    label: 'Fill empty cells',
-    hint: 'Puts N/A into blank or missing cells',
-  },
-  {
-    id: 'REMOVE_DUPLICATES',
-    label: 'Remove duplicate rows',
-    hint: 'Keeps the first copy of each identical row',
-  },
+  { id: 'TRIM_WHITESPACE', label: 'Trim extra spaces', hint: 'Removes spaces at the start and end of every cell' },
+  { id: 'REMOVE_EMPTY_ROWS', label: 'Remove empty rows', hint: 'Removes rows where every cell is blank' },
+  { id: 'FILL_EMPTY_CELLS', label: 'Fill empty cells', hint: 'Puts N/A into blank or missing cells' },
+  { id: 'REMOVE_DUPLICATES', label: 'Remove duplicate rows', hint: 'Keeps the first copy of each identical row' },
+];
+const OPERATION_LABELS = Object.fromEntries(OPERATIONS.map((op) => [op.id, op.label]));
+
+// Example instructions the user can click. They show what the new building blocks can do.
+const EXAMPLES = [
+  'Clean up this file',
+  'Make city names uppercase',
+  'Remove rows where email is empty',
+  'Convert dates to YYYY-MM-DD',
+  'Split name into first_name and last_name',
 ];
 
-// Example instructions the user can click to fill the text box
-const EXAMPLES = ['Remove duplicate rows', 'Trim extra spaces', 'Clean up this file'];
 // Same limit as the backend (application.properties)
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB in bytes
 
@@ -43,43 +36,47 @@ function App() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
-  // Cleaning state (shared by AI mode and manual mode)
+  // AI plan state (NEW in Step C3)
   const [instruction, setInstruction] = useState('');
+  const [planResponse, setPlanResponse] = useState(null); // the AI's plan + preview, waiting for Confirm
+  const [planning, setPlanning] = useState(false);        // true while asking the AI or re-running a plan
+
+  // Manual mode state
   const [selectedOps, setSelectedOps] = useState([]);
+
+  // Final result shown in Card 3 (from a confirmed plan OR manual mode)
   const [cleanResult, setCleanResult] = useState(null);
   const [cleaning, setCleaning] = useState(false);
   const [cleanError, setCleanError] = useState('');
 
-    // Check the backend when the page loads.
-  // Free hosting puts the server to sleep when idle, and waking up takes about a minute,
-  // so we retry every 5 seconds (up to 2 minutes) instead of giving up after one try.
+  // Check the backend when the page loads (retries while the free server wakes up)
   useEffect(() => {
-    let cancelled = false; // becomes true if the page is closed while we are waiting
+    let cancelled = false;
 
     async function connect() {
       for (let attempt = 1; attempt <= 24; attempt++) { // 24 x 5 seconds = 2 minutes
         try {
           await checkHealth();
           if (!cancelled) setBackendStatus('online');
-          return; // success, stop retrying
+          return;
         } catch {
           if (cancelled) return;
           setBackendStatus('waking');
-          await new Promise((resolve) => setTimeout(resolve, 5000)); // wait 5 seconds
+          await new Promise((resolve) => setTimeout(resolve, 5000));
         }
       }
       if (!cancelled) setBackendStatus('offline');
     }
 
     connect();
-
-    // React runs this "cleanup" function when the component is removed
     return () => {
       cancelled = true;
     };
   }, []);
 
+  // Clears the plan and the result (used when a new file is chosen, or a new request starts)
   function resetCleaning() {
+    setPlanResponse(null);
     setCleanResult(null);
     setCleanError('');
   }
@@ -98,14 +95,12 @@ function App() {
     }
     if (file && file.size > MAX_FILE_SIZE) {
       setSelectedFile(null);
-      setUploadError(
-        `This file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The maximum size is 5 MB.`
-      );
+      setUploadError(`This file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The maximum size is 5 MB.`);
       return;
     }
-
     setSelectedFile(file);
   }
+
   async function handleUpload() {
     if (!selectedFile) {
       setUploadError('Please choose a CSV file first.');
@@ -114,7 +109,6 @@ function App() {
     setUploading(true);
     setUploadError('');
     resetCleaning();
-
     try {
       setUploadResult(await uploadCsv(selectedFile));
     } catch (error) {
@@ -124,19 +118,76 @@ function App() {
     }
   }
 
+  // ---------- AI plan (NEW) ----------
+
+  // Step 1: ask the AI for a plan. Nothing is "accepted" yet: we only show a preview.
+  async function handleMakePlan() {
+    setPlanning(true);
+    resetCleaning();
+    try {
+      setPlanResponse(await aiPlan(selectedFile, instruction.trim()));
+    } catch (error) {
+      setCleanError(error.message);
+    } finally {
+      setPlanning(false);
+    }
+  }
+
+  // The user removes a step -> run the shorter plan again to get a fresh, correct preview
+  async function handleRemoveStep(index) {
+    const steps = planResponse.plan.steps.filter((_, i) => i !== index);
+    if (steps.length === 0) {
+      setPlanResponse(null); // nothing left to run
+      return;
+    }
+    const newPlan = { steps };
+    setPlanning(true);
+    setCleanError('');
+    try {
+      const preview = await applyPlan(selectedFile, newPlan);
+      // Keep the AI's reason and "what the AI saw", replace the plan and the preview
+      setPlanResponse({ ...planResponse, plan: newPlan, preview, edited: true });
+    } catch (error) {
+      setCleanError(error.message);
+    } finally {
+      setPlanning(false);
+    }
+  }
+
+  // Step 2: the user confirms -> the preview becomes the result in Card 3
+  function handleConfirmPlan() {
+    const { preview, reason, notDone, aiInput } = planResponse;
+    setCleanResult({
+      data: preview.data,
+      before: preview.before,
+      after: preview.after,
+      applied: preview.steps.map((report) => report.summary),
+      aiReason: reason,
+      notDone,
+      aiInput,
+    });
+    setPlanResponse(null);
+  }
+
+  // ---------- Manual mode ----------
+
   function toggleOperation(id) {
     setSelectedOps((current) =>
       current.includes(id) ? current.filter((op) => op !== id) : [...current, id]
     );
   }
 
-  // Shared helper: runs a cleaning request (AI or manual) and handles loading + errors.
-  async function runCleaning(request) {
+  async function handleManualClean() {
     setCleaning(true);
     resetCleaning();
-
     try {
-      setCleanResult(await request());
+      const result = await cleanCsv(selectedFile, selectedOps);
+      setCleanResult({
+        data: result.data,
+        before: result.before,
+        after: result.after,
+        applied: result.appliedOperations.map((op) => OPERATION_LABELS[op] || op),
+      });
     } catch (error) {
       setCleanError(error.message);
     } finally {
@@ -144,39 +195,30 @@ function App() {
     }
   }
 
-  function handleAiClean() {
-    runCleaning(() => aiCleanCsv(selectedFile, instruction.trim()));
-  }
+  // ---------- Download ----------
 
-  function handleManualClean() {
-    runCleaning(() => cleanCsv(selectedFile, selectedOps));
-  }
-
-  // Creates the cleaned CSV in the browser and downloads it
   function handleDownload() {
-    downloadCsv(
-      cleanedFileName(selectedFile?.name),
-      cleanResult.data.headers,
-      cleanResult.data.rows
-    );
+    downloadCsv(cleanedFileName(selectedFile?.name), cleanResult.data.headers, cleanResult.data.rows);
   }
 
-  // Short summary of what changed, e.g. "2 row(s) removed"
   function changeSummary(before, after) {
     const rowsRemoved = before.totalRows - after.totalRows;
-    const columnsRemoved = before.totalColumns - after.totalColumns;
+    const columnChange = after.totalColumns - before.totalColumns;
     const parts = [];
     if (rowsRemoved > 0) parts.push(`${rowsRemoved} row(s) removed`);
-    if (columnsRemoved > 0) parts.push(`${columnsRemoved} column(s) removed`);
+    if (columnChange < 0) parts.push(`${-columnChange} column(s) removed`);
+    if (columnChange > 0) parts.push(`${columnChange} column(s) added`);
     return parts.length > 0 ? parts.join(', ') : 'No rows or columns removed';
   }
+
+  const busy = planning || cleaning;
 
   return (
     <div className="app">
       <header className="header">
         <h1>SmartSheet AI</h1>
         <p className="subtitle">CSV Data Cleaning Agent</p>
-                <p className={`status status-${backendStatus}`}>
+        <p className={`status status-${backendStatus}`}>
           {backendStatus === 'checking' && 'Checking backend...'}
           {backendStatus === 'waking' && '⏳ Waking up the server (free hosting sleeps when idle, ~1 minute)...'}
           {backendStatus === 'online' && 'Backend connected ✅'}
@@ -190,8 +232,7 @@ function App() {
           <h2>1. Upload your CSV</h2>
 
           <div className="upload-row">
-            {/* onClick clears the old selection, so picking the SAME file again
-                still triggers onChange (browsers skip onChange if nothing changed) */}
+            {/* onClick clears the old selection, so picking the SAME file again still triggers onChange */}
             <input
               type="file"
               accept=".csv"
@@ -200,11 +241,7 @@ function App() {
               }}
               onChange={handleFileChange}
             />
-            <button
-              className="button"
-              onClick={handleUpload}
-              disabled={uploading || !selectedFile}
-            >
+            <button className="button" onClick={handleUpload} disabled={uploading || !selectedFile}>
               {uploading ? 'Uploading...' : 'Upload & Preview'}
             </button>
           </div>
@@ -222,7 +259,7 @@ function App() {
           )}
         </section>
 
-        {/* ---------- CARD 2: Instruction ---------- */}
+        {/* ---------- CARD 2: Instruction + plan preview ---------- */}
         <section className="card">
           <h2>2. Tell the AI what to clean</h2>
 
@@ -234,7 +271,7 @@ function App() {
                 className="instruction"
                 rows={3}
                 maxLength={300}
-                placeholder='For example: "Remove duplicate rows and fix extra spaces"'
+                placeholder='For example: "Make city names uppercase and remove rows where email is empty"'
                 value={instruction}
                 onChange={(event) => setInstruction(event.target.value)}
               />
@@ -242,28 +279,32 @@ function App() {
               <div className="examples">
                 <span>Try:</span>
                 {EXAMPLES.map((example) => (
-                  <button
-                    key={example}
-                    className="chip"
-                    onClick={() => setInstruction(example)}
-                  >
+                  <button key={example} className="chip" onClick={() => setInstruction(example)}>
                     {example}
                   </button>
                 ))}
               </div>
 
               <p className="privacy-note">
-                🔒 The AI only sees your instruction, the column names and counts — never your
-                data. Please don&apos;t type personal information in the instruction.
+                🔒 The AI only sees your instruction, the column names, column types and counts — never
+                your data. Please don&apos;t type personal information in the instruction.
               </p>
 
-              <button
-                className="button"
-                onClick={handleAiClean}
-                disabled={cleaning || !instruction.trim()}
-              >
-                {cleaning ? 'Working...' : 'Clean with AI'}
+              <button className="button" onClick={handleMakePlan} disabled={busy || !instruction.trim()}>
+                {planning && !planResponse ? 'The AI is planning...' : 'Make a plan with AI'}
               </button>
+
+              {planResponse && (
+                <PlanPreview
+                  planResponse={planResponse}
+                  busy={busy}
+                  onRemoveStep={handleRemoveStep}
+                  onConfirm={handleConfirmPlan}
+                  onDiscard={() => setPlanResponse(null)}
+                />
+              )}
+
+              {cleanError && <p className="error">{cleanError}</p>}
 
               <details className="manual-mode">
                 <summary>Manual mode (no AI)</summary>
@@ -288,13 +329,11 @@ function App() {
                 <button
                   className="button button-secondary"
                   onClick={handleManualClean}
-                  disabled={cleaning || selectedOps.length === 0}
+                  disabled={busy || selectedOps.length === 0}
                 >
-                  Clean Data
+                  {cleaning ? 'Cleaning...' : 'Clean Data'}
                 </button>
               </details>
-
-              {cleanError && <p className="error">{cleanError}</p>}
             </>
           )}
         </section>
@@ -304,7 +343,7 @@ function App() {
           <h2>3. Preview and download</h2>
 
           {!cleanResult ? (
-            <p className="placeholder">Cleaned data will appear here.</p>
+            <p className="placeholder">Confirm a plan (or use manual mode) to see the cleaned data here.</p>
           ) : (
             <>
               {cleanResult.aiReason && (
@@ -313,14 +352,16 @@ function App() {
                 </p>
               )}
 
-              <p className="summary">
-                Applied: <strong>{cleanResult.appliedOperations.join(', ')}</strong>
-              </p>
+              <h3>What was done</h3>
+              <ol className="applied-list">
+                {cleanResult.applied.map((line, index) => (
+                  <li key={index}>{line}</li>
+                ))}
+              </ol>
 
               {cleanResult.notDone && (
                 <p className="warning">
-                  ⚠️ <strong>Not done:</strong> {cleanResult.notDone} (no approved operation for
-                  this yet)
+                  ⚠️ <strong>Not done:</strong> {cleanResult.notDone}
                 </p>
               )}
 
@@ -331,7 +372,6 @@ function App() {
                 </details>
               )}
 
-              {/* ---- Download bar ---- */}
               <div className="download-bar">
                 <div>
                   <strong>{cleanedFileName(selectedFile?.name)}</strong>

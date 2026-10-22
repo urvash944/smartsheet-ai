@@ -1,11 +1,10 @@
-/* Center the whole app and limit its width so it looks neat on big screens */
+/* ================= Layout ================= */
 .app {
   max-width: 900px;
   margin: 0 auto;
   padding: 32px 16px;
 }
 
-/* Title area at the top */
 .header {
   text-align: center;
   margin-bottom: 32px;
@@ -22,14 +21,12 @@
   color: #555;
 }
 
-/* Stack the cards vertically with space between them */
 .content {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* A white box with a soft border and shadow */
 .card {
   background: #ffffff;
   border: 1px solid #e2e2e2;
@@ -43,12 +40,23 @@
   font-size: 1.2rem;
 }
 
-/* Grey italic text for "coming soon" sections */
+.card h3 {
+  font-size: 1rem;
+  margin: 20px 0 8px;
+  color: #333;
+}
+
 .placeholder {
   color: #888;
   font-style: italic;
 }
-/* Small rounded badge that shows backend connection status */
+
+.hint {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* ================= Backend status badge ================= */
 .status {
   display: inline-block;
   margin-top: 12px;
@@ -63,6 +71,11 @@
   color: #555;
 }
 
+.status-waking {
+  background: #fff8e1;
+  color: #6b4e00;
+}
+
 .status-online {
   background: #e3f6ea;
   color: #1f6f4a;
@@ -72,7 +85,8 @@
   background: #fde8e8;
   color: #b42318;
 }
-/* ---------- Upload area ---------- */
+
+/* ================= Buttons and messages ================= */
 .upload-row {
   display: flex;
   flex-wrap: wrap;
@@ -99,6 +113,14 @@
   cursor: not-allowed;
 }
 
+.button-secondary {
+  background: #4b5563;
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #374151;
+}
+
 .error {
   color: #b42318;
   background: #fde8e8;
@@ -106,12 +128,20 @@
   border-radius: 8px;
 }
 
+.warning {
+  background: #fff8e1;
+  border-left: 4px solid #f5a623;
+  color: #6b4e00;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
 .summary {
   margin: 16px 0 8px;
 }
 
-/* ---------- Data table ---------- */
-/* The wrapper scrolls sideways if the table has many columns */
+/* ================= Data table ================= */
 .table-wrapper {
   overflow-x: auto;
   border: 1px solid #e2e2e2;
@@ -129,8 +159,7 @@
   padding: 8px 12px;
   border-bottom: 1px solid #eee;
   text-align: left;
-  /* "pre" keeps extra spaces visible, so we can SEE them before cleaning */
-  white-space: pre;
+  white-space: pre; /* keep extra spaces visible */
 }
 
 .data-table th {
@@ -142,54 +171,23 @@
   background: #fafafa;
 }
 
+.data-table .row-number {
+  color: #888;
+  width: 1%;
+  text-align: right;
+}
+
+.data-table tr.row-broken td {
+  background: #fff8e1;
+}
+
 .table-note {
   margin: 8px 12px;
   color: #666;
   font-size: 0.85rem;
 }
-/* ---------- Section sub-headings ---------- */
-.card h3 {
-  font-size: 1rem;
-  margin: 20px 0 8px;
-  color: #333;
-}
 
-.hint {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-/* ---------- Operation checkboxes ---------- */
-.ops-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 12px 0 16px;
-}
-
-.op-option {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 12px;
-  border: 1px solid #e2e2e2;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.op-option:hover {
-  background: #f7faf8;
-}
-
-.op-option input {
-  margin-top: 4px;
-}
-
-.op-option small {
-  color: #666;
-}
-
-/* ---------- Profile (data health) table ---------- */
+/* ================= Data health (profile) table ================= */
 .profile-table {
   border-collapse: collapse;
   font-size: 0.9rem;
@@ -207,12 +205,12 @@
   background: #f0f5f2;
 }
 
-/* Highlight numbers that changed after cleaning */
 .profile-table td.changed {
   color: #1f6f4a;
   font-weight: 700;
 }
-/* ---------- AI instruction ---------- */
+
+/* ================= AI instruction ================= */
 .instruction {
   width: 100%;
   padding: 10px 12px;
@@ -259,29 +257,6 @@
   border-radius: 8px;
 }
 
-/* ---------- Manual mode ---------- */
-.manual-mode {
-  margin-top: 20px;
-  border-top: 1px dashed #ddd;
-  padding-top: 12px;
-}
-
-.manual-mode summary,
-.ai-input summary {
-  cursor: pointer;
-  color: #1f6f4a;
-  font-weight: 600;
-}
-
-.button-secondary {
-  background: #4b5563;
-}
-
-.button-secondary:hover:not(:disabled) {
-  background: #374151;
-}
-
-/* ---------- AI results ---------- */
 .ai-reason {
   background: #eef5f1;
   border-left: 4px solid #1f6f4a;
@@ -302,16 +277,169 @@
   overflow-x: auto;
   white-space: pre-wrap;
 }
-/* Yellow warning box */
-.warning {
-  background: #fff8e1;
-  border-left: 4px solid #f5a623;
-  color: #6b4e00;
-  padding: 10px 14px;
-  border-radius: 6px;
-  margin-top: 12px;
+
+.manual-mode summary,
+.ai-input summary {
+  cursor: pointer;
+  color: #1f6f4a;
+  font-weight: 600;
 }
-/* ---------- Download bar ---------- */
+
+/* ================= Plan preview (NEW in Step C3) ================= */
+.plan-preview {
+  margin-top: 20px;
+  padding: 16px;
+  border: 2px solid #cfe3d8;
+  border-radius: 10px;
+  background: #fbfdfc;
+}
+
+.plan-preview h3:first-child {
+  margin-top: 0;
+}
+
+.plan-steps {
+  list-style: none; /* we draw our own numbers below */
+  counter-reset: step;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-step {
+  counter-increment: step;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+}
+
+/* The round step number in front of each step */
+.plan-step::before {
+  content: counter(step);
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #1f6f4a;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-step-main {
+  flex: 1;
+  min-width: 0; /* lets long text wrap instead of pushing the button out */
+}
+
+.plan-step-result {
+  color: #555;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.plan-step-rows {
+  color: #b45309;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.badge-warning {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff1e0;
+  color: #b45309;
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.icon-button {
+  background: none;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  color: #888;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-button:hover:not(:disabled) {
+  color: #b42318;
+  border-color: #f2b8b5;
+  background: #fde8e8;
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.applied-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #333;
+}
+
+.applied-list li {
+  margin: 4px 0;
+}
+
+/* ================= Manual mode ================= */
+.manual-mode {
+  margin-top: 24px;
+  border-top: 1px dashed #ddd;
+  padding-top: 12px;
+}
+
+.ops-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.op-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.op-option:hover {
+  background: #f7faf8;
+}
+
+.op-option input {
+  margin-top: 4px;
+}
+
+.op-option small {
+  color: #666;
+}
+
+/* ================= Download bar ================= */
 .download-bar {
   display: flex;
   flex-wrap: wrap;
@@ -327,20 +455,4 @@
 
 .download-bar small {
   color: #555;
-}
-
-/* ---------- Table: row numbers and broken rows ---------- */
-.data-table .row-number {
-  color: #888;
-  width: 1%;
-  text-align: right;
-}
-
-.data-table tr.row-broken td {
-  background: #fff8e1;
-}
-/* Yellow badge while the free server wakes up */
-.status-waking {
-  background: #fff8e1;
-  color: #6b4e00;
 }
