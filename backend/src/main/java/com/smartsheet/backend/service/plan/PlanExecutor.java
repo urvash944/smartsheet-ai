@@ -44,12 +44,26 @@ public class PlanExecutor {
 
     // Date formats people can choose from, mapped to Java's date pattern letters.
     // "uuuu" = year; STRICT checking means "31/02/2024" is rejected, not silently changed.
-    private static final Map<String, String> DATE_FORMATS = Map.of(
+    // WRITING uses two-digit day/month ("05/06/2024").
+    public static final Map<String, String> DATE_FORMATS = Map.of(
             "YYYY-MM-DD", "uuuu-MM-dd",
             "DD-MM-YYYY", "dd-MM-uuuu",
             "DD/MM/YYYY", "dd/MM/uuuu",
             "MM/DD/YYYY", "MM/dd/uuuu",
             "DD.MM.YYYY", "dd.MM.uuuu");
+
+    // READING accepts one OR two digits for day and month, so "5/6/2024" and "05/06/2024" both work.
+    public static final Map<String, String> DATE_READ_FORMATS = Map.of(
+            "YYYY-MM-DD", "uuuu-M-d",
+            "DD-MM-YYYY", "d-M-uuuu",
+            "DD/MM/YYYY", "d/M/uuuu",
+            "MM/DD/YYYY", "M/d/uuuu",
+            "DD.MM.YYYY", "d.M.uuuu");
+
+    // A strict reader for one of the formats above (used here and by ColumnHintService)
+    public static DateTimeFormatter dateReader(String formatName) {
+        return DateTimeFormatter.ofPattern(DATE_READ_FORMATS.get(formatName)).withResolverStyle(ResolverStyle.STRICT);
+    }
 
     public PlanRun run(CsvData input, CleaningPlan plan) {
         if (plan == null || plan.steps() == null || plan.steps().isEmpty()) {
@@ -365,7 +379,7 @@ public class PlanExecutor {
             throw new PlanException(n, "date formats must be one of " + DATE_FORMATS.keySet()
                     + " (text = current format, option = new format).");
         }
-        DateTimeFormatter from = DateTimeFormatter.ofPattern(DATE_FORMATS.get(fromName)).withResolverStyle(ResolverStyle.STRICT);
+        DateTimeFormatter from = dateReader(fromName);
         DateTimeFormatter to = DateTimeFormatter.ofPattern(DATE_FORMATS.get(toName)).withResolverStyle(ResolverStyle.STRICT);
 
         int converted = 0;
